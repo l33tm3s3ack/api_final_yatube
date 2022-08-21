@@ -1,32 +1,14 @@
-
 from django.shortcuts import get_object_or_404
-from rest_framework import filters, mixins, viewsets
+from rest_framework import filters, viewsets
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import (SAFE_METHODS, BasePermission,
-                                        IsAuthenticated,
+from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
 
-from posts.models import Follow, Group, Post
+from posts.models import Group, Post
+from .mixins import CreateListViewSet
+from .permissions import IsOwnerOrReadOnly
 from .serializers import (CommentSerializer, FollowSerializer, GroupSerializer,
                           PostSerializer)
-
-
-class CreateListViewSet(mixins.CreateModelMixin,
-                        mixins.ListModelMixin,
-                        viewsets.GenericViewSet):
-    """Вьюсет, выдающий только список и позволяющий его создавать."""
-    pass
-
-
-class IsOwnerOrReadOnly(BasePermission):
-    """Класс разрешения, где изменять и удалять объект может только владелец,
-    остальные могут только просматривать."""
-    message = "You're not an owner to change it!"
-
-    def has_object_permission(self, request, view, obj):
-        if request.method in SAFE_METHODS:
-            return True
-        return obj.author == request.user
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -70,7 +52,7 @@ class FollowViewSet(CreateListViewSet):
     search_fields = ('user__username', 'following__username')
 
     def get_queryset(self):
-        return Follow.objects.filter(user=self.request.user)
+        return self.request.user.follower.all()
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
